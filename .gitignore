@@ -14,7 +14,7 @@ logs/
 
 # Compiled Java class files
 *.class
-*.json
+
 
 # Compiled Python bytecode
 *.py[cod]
