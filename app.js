@@ -5,7 +5,7 @@ const app = express();
 const mongooseObject = require('./config/db');
 const AWS = require('aws-sdk');
 const admin = require('firebase-admin');
-const serviceAccount = require('./staticHoldings/connectingheartsv2-firebase-adminsdk-u7a8o-93f9bfd3ab.json');
+// const serviceAccount = require('./staticHoldings/connectingheartsv2-firebase-adminsdk-u7a8o-93f9bfd3ab.json');
 const swaggerUi = require("swagger-ui-express");
 const swaggerJSDoc = require("swagger-jsdoc");
 var bodyParser = require('body-parser');
@@ -48,10 +48,10 @@ const options = {
 
 const swaggerDoc = swaggerJSDoc(options);
 app.use('/swagger-apis', swaggerUi.serve, swaggerUi.setup(swaggerDoc))
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    // Your other configuration options
-});
+// admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount),
+//     // Your other configuration options
+// });
 // app.use(express.json());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
