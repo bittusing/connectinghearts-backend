@@ -18,6 +18,7 @@ const paymentAuditSchema = require("../../schemas/payment.audit.schema");
 const mongoUtilService = require("../../helper_functions/mongoUtils");
 const argon = require("argon2");
 const nameUpdateSchema = require("../../schemas/nameUpdate.schema");
+const paymentService = require("../../services/payment/paymentService");
 
 function addMonthsToDate(monthsToAdd, date) {
   // Clone the input date to avoid modifying it directly
@@ -398,17 +399,10 @@ module.exports = {
     }
   },
   buyMembership: async (req, res) => {
-    try {
-      // SDK 2.2.5 compatibility: Determine environment first
-      // For local development, always use SANDBOX to avoid Play Store installation requirement
-      const paymentEnvironment = process.env.IS_PROD === 'TRUE' ? 'PRODUCTION' : 'SANDBOX';
-      
-      
-      // Use sandbox URL for development to avoid Play Store requirement
-      let url = paymentEnvironment === 'SANDBOX' ? 'https://sandbox.cashfree.com/pg/orders' : process.env.CASHFREE_URL;
-      console.log(url,"url");
-      console.log(paymentEnvironment,"paymentEnvironment");
+   // try {
+      console.log("date in IST is:", new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
 
+      // Get membership plan and user data
       let membershipData = await memberShipListSchema.findById(req.params.id);
       let userData = await userSchema.findById(req.userId);
       
@@ -429,105 +423,93 @@ module.exports = {
           err: "User session invalid. Please login again.",
         });
       }
-      //console.log(process.env.CASHFREE_APP_ID,"App_ID")
-      let headers = {
-        "Content-Type": "application/json",
-        "x-client-id": process.env.CASHFREE_APP_ID,
-        "x-client-secret": process.env.CASHFREE_SECRET,
-        "x-api-version": process.env.CASHFREE_API_VERSION,
-        "x-request-id": process.env.CASHFREE_REQUEST_ID,
-      };
-      console.log("headers",headers);
-      console.log("date in IST is:",new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
-      let body = {
-        order_amount: membershipData?.membershipAmount,
-        order_id: new Date().getTime().toString(),
-        order_currency: membershipData?.currency,
-        customer_details: {
-          customer_id: userData?._id,
-          customer_name: userData?.name,
-          customer_email: userData?.email,
-          customer_phone: membershipData?.currency == "INR" ? userData?.phoneNumber : userData.countryCode + userData.phoneNumber
+
+      // Generate unique order ID
+      const orderId = new Date().getTime().toString();
+
+      // Prepare order data for payment gateway
+      const orderData = {
+        amount: membershipData.membershipAmount,
+        currency: membershipData.currency,
+        orderId: orderId,
+        customer: {
+          customer_id: userData._id.toString(),
+          customer_name: userData.name,
+          customer_email: userData.email,
+          customer_phone: membershipData.currency === "INR" 
+            ? userData.phoneNumber 
+            : userData.countryCode + userData.phoneNumber
         },
-        order_tags: {
-          // notify_url: "http://localhost:3000",
-          membership_id: membershipData?._id
+        metadata: {
+          membership_id: membershipData._id.toString()
         },
-        order_note: "Connecting hearts membership purchase",
+        notes: {
+          membership_id: membershipData._id.toString(),
+          plan_name: membershipData.planName,
+          user_id: userData._id.toString(),
+          description: "Connecting hearts membership purchase"
+        }
       };
-      console.log(body,"body");
-      const cashfreeResp = await axios.post(url, body, {
-        headers,
-      });
-      
-      const orderToken = cashfreeResp.data.order_token || cashfreeResp.data.payment_session_id;
-      
-      // Validate session ID format
-      if (!cashfreeResp.data.payment_session_id || !cashfreeResp.data.payment_session_id.startsWith('session_')) {
-        console.error('=== INVALID SESSION ID FROM CASHFREE ===');
-        console.error('Received session ID:', cashfreeResp.data.payment_session_id);
-        throw new Error('Invalid session ID format received from Cashfree');
-      }
-      
-      if (cashfreeResp.data.payment_session_id.length < 50) {
-        console.warn('=== SHORT SESSION ID WARNING ===');
-        console.warn('Session ID length:', cashfreeResp.data.payment_session_id.length);
-        console.warn('This might cause issues with the payment SDK');
-      }
-      
-      const responseData = { 
-        orderId: cashfreeResp.data.order_id, 
-        sessionId: cashfreeResp.data.payment_session_id,
-        orderToken: cashfreeResp.data.order_token || cashfreeResp.data.payment_session_id
+
+      console.log('Creating payment order:', orderData);
+
+      // Create order using payment service (Razorpay)
+      const paymentResponse = await paymentService.createOrder(orderData);
+
+      console.log('Payment order created:', paymentResponse);
+
+      // Prepare response for frontend (web) and mobile app
+      const response = {
+        orderId: paymentResponse.orderId,
+        sessionId: paymentResponse.sessionId,
+        orderToken: paymentResponse.orderToken,
+        // Web-specific: Razorpay key for frontend checkout
+        keyId: paymentResponse.keyId,
+        // Additional details
+        amount: paymentResponse.amount,
+        currency: paymentResponse.currency,
+        paymentEnvironment: paymentResponse.paymentEnvironment,
+        gateway: paymentResponse.gateway || 'RAZORPAY',
+        // For mobile app compatibility
+        receipt: paymentResponse.receipt || orderId
       };
-      // SDK 2.2.5 compatibility: Validate session format
+      console.log("response", response);
+      return res.send(response);
+    // } catch (err) {
+    //   console.log('Buy membership error:', err);
       
-      // Validate payment_session_id format for SDK 2.2.5
-      if (!cashfreeResp.data.payment_session_id || cashfreeResp.data.payment_session_id.length < 10) {
-        console.error('Invalid payment_session_id for SDK 2.2.5:', cashfreeResp.data.payment_session_id);
-        throw new Error('Invalid payment session format from Cashfree');
-      }
+    //   let errorMessage = "Unable to create payment session. Please check your connection and try again.";
+    //   let statusCode = 400;
       
-      const enrichedResponse = { 
-        ...responseData, 
-        paymentEnvironment,
-        sdkVersion: '2.2.5' // For debugging
-      };
+    //   // Handle specific error types
+    //   if (err?.statusCode === 401 || err?.response?.status === 401) {
+    //     errorMessage = "Payment gateway authentication failed. Please contact support.";
+    //     statusCode = 500;
+    //   } else if (err?.statusCode === 400 || err?.response?.status === 400) {
+    //     errorMessage = "Invalid payment request. Please check your membership selection.";
+    //   } else if (err?.code === 'ECONNREFUSED' || err?.code === 'ENOTFOUND') {
+    //     errorMessage = "Payment service unavailable. Please try again later.";
+    //     statusCode = 503;
+    //   } else if (err?.message) {
+    //     errorMessage = err.message;
+    //   } else if (err?.response?.data?.message) {
+    //     errorMessage = err.response.data.message;
+    //   } else if (typeof err === 'string') {
+    //     errorMessage = err;
+    //   }
       
-      
-      return res.send(enrichedResponse);
-    } catch (err) {
-      console.log('Buy membership error:', err);
-      
-      let errorMessage = "Unable to create payment session. Please check your connection and try again.";
-      let statusCode = 400;
-      
-      // Handle specific error types
-      if (err?.response?.status === 401) {
-        errorMessage = "Payment gateway authentication failed. Please contact support.";
-        statusCode = 500;
-      } else if (err?.response?.status === 400) {
-        errorMessage = "Invalid payment request. Please check your membership selection.";
-      } else if (err?.code === 'ECONNREFUSED' || err?.code === 'ENOTFOUND') {
-        errorMessage = "Payment service unavailable. Please try again later.";
-        statusCode = 503;
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-      
-      return res.status(statusCode).send({
-        code: `CH${statusCode}`,
-        status: "failed",
-        err: errorMessage,
-      });
-    }
+    //   return res.status(statusCode).send({
+    //     code: `CH${statusCode}`,
+    //     status: "failed",
+    //     err: errorMessage,
+    //   });
+    // }
   },
   verifyPayment: async (req, res) => {
     try {
       let orderID = req.params.orderID;
       console.log('Verifying payment for order:', orderID, 'for user:', req.userId);
+      console.log("date in IST is:", new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
       
       // Validate user session
       if (!req.userId) {
@@ -547,46 +529,69 @@ module.exports = {
         });
       }
       
-      // Use appropriate URL based on environment
-      const baseUrl = process.env.NODE_ENV === 'production' && process.env.CASHFREE_URL && !process.env.CASHFREE_URL.includes('sandbox') 
-        ? process.env.CASHFREE_URL 
-        : 'https://sandbox.cashfree.com/pg/orders';
-      let url = `${baseUrl}/${orderID}`;
-      console.log("date in IST is:",new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
-      console.log(url,"url")
-      let headers = {
-        "Content-Type": "application/json",
-        "x-client-id": process.env.CASHFREE_APP_ID,
-        "x-client-secret": process.env.CASHFREE_SECRET,
-        "x-api-version": process.env.CASHFREE_API_VERSION,
-        "x-request-id": process.env.CASHFREE_REQUEST_ID,
-      };
-      console.log(headers,"headers")
-      const cashfreeVerifyResp = await axios.get(url, {
-        headers,
-      });
+      // Verify payment using payment service (Razorpay)
+      const verificationResponse = await paymentService.verifyPayment(orderID);
       
-      console.log(">>>>><<<<<<<", cashfreeVerifyResp.data);
-      let audit_obj = cashfreeVerifyResp?.data;
-      // audit_obj["userId"]=req.userId;
-      audit_obj["timeStamp"]=new Date();
-      //console.log({audit_obj});
+      console.log("Payment verification response:", verificationResponse);
+
+      // Prepare audit object for database
+      const gateway = paymentService.getCurrentGateway();
+      const audit_obj = {
+        gateway_type: gateway.getGatewayName(),
+        gateway_order_id: verificationResponse.orderId,
+        order_id: verificationResponse.receipt || orderID,
+        order_amount: verificationResponse.orderAmount,
+        order_currency: verificationResponse.orderCurrency,
+        order_status: verificationResponse.orderStatus,
+        payment_session_id: verificationResponse.orderId, // Razorpay uses order ID as session
+        payment_details: verificationResponse.paymentDetails,
+        raw_response: verificationResponse.rawResponse,
+        notes: verificationResponse.notes || {},
+        timeStamp: new Date()
+      };
+
+      // Save to payment audit
       await paymentAuditSchema.findByIdAndUpdate(req.userId, audit_obj, { upsert: true });
-      if (cashfreeVerifyResp?.data?.order_status == "PAID") {
-        let id = cashfreeVerifyResp?.data?.order_tags?.membership_id;
-        let memberShipPlanData = await memberShipListSchema.findById(id);
-        if (!memberShipPlanData) throw new Error("Something went wrong. Please contact admin.");
+
+      // Check if payment is successful
+      if (verificationResponse.orderStatus === 'PAID') {
+        // Get membership ID from notes
+        const membershipId = verificationResponse.notes?.membership_id;
+        
+        if (!membershipId) {
+          throw new Error("Membership ID not found in payment details. Please contact admin.");
+        }
+
+        let memberShipPlanData = await memberShipListSchema.findById(membershipId);
+        if (!memberShipPlanData) {
+          throw new Error("Something went wrong. Please contact admin.");
+        }
+
+        // Get existing membership expiry date
         let existingMembership = await userSchema.findById(req.userId).select({ "_id": 0, memberShipExpiryDate: 1 });
-        await userSchema.findByIdAndUpdate(req.userId, { "membershipStartDate": new Date(), "memberShipExpiryDate": addMonthsToDate(memberShipPlanData?.duration, existingMembership?.memberShipExpiryDate), planName: memberShipPlanData?.planName, $inc: { heartCoins: memberShipPlanData?.heartCoins }, membership_id: id });
+        
+        // Update user membership
+        await userSchema.findByIdAndUpdate(
+          req.userId, 
+          { 
+            "membershipStartDate": new Date(), 
+            "memberShipExpiryDate": addMonthsToDate(memberShipPlanData?.duration, existingMembership?.memberShipExpiryDate), 
+            planName: memberShipPlanData?.planName, 
+            $inc: { heartCoins: memberShipPlanData?.heartCoins }, 
+            membership_id: membershipId 
+          }
+        );
+
         return res.send({
           code: "CH200",
           status: "success",
-          message: "Membership purchased successfully."
+          message: "Membership purchased successfully.",
+          orderId: verificationResponse.orderId,
+          paymentDetails: verificationResponse.paymentDetails
         });
-      }
-      else {
-        console.log(cashfreeVerifyResp?.data?.order_status)
-        throw new Error("Payment declined. Please try later.")
+      } else {
+        console.log('Payment status:', verificationResponse.orderStatus);
+        throw new Error(`Payment not completed. Status: ${verificationResponse.orderStatus}. Please try again.`);
       }
     }
     catch (err) {
@@ -596,10 +601,10 @@ module.exports = {
       let statusCode = 400;
       
       // Handle specific error types
-      if (err?.response?.status === 401) {
+      if (err?.statusCode === 401 || err?.response?.status === 401) {
         errorMessage = "Payment gateway authentication failed during verification.";
         statusCode = 500;
-      } else if (err?.response?.status === 404) {
+      } else if (err?.statusCode === 404 || err?.response?.status === 404) {
         errorMessage = "Payment order not found. Please try again.";
         statusCode = 404;
       } else if (err?.code === 'ECONNREFUSED' || err?.code === 'ENOTFOUND') {
