@@ -239,8 +239,9 @@ module.exports = {
       if (partnerPreference?.height?.min || partnerPreference?.height?.max) {
         query_obj["height"] = { $lte: partnerPreference.height.max || 84, $gte: partnerPreference.height.min || 48 }
       }
-      console.log(query_obj)
+      // console.log("query_obj",query_obj)
       let recommendedProfiles = await personalDetailsSchema.find(query_obj).select({ "clientID": 1, _id: 0 });
+      // console.log("recommendedProfiles",recommendedProfiles)
       if (!recommendedProfiles) {
         throw new Error('No profiles found. Please change your details in partner preference screen.');
       }
@@ -249,6 +250,7 @@ module.exports = {
         ids.push(recommendedProfiles[i].clientID);
       }
       let filteredProfiles = await getUsers.getListView(ids,req.userId);
+      console.log("filteredProfiles",filteredProfiles)
       return res.send({
         code: "CH200",
         status: "success",

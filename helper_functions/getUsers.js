@@ -51,7 +51,7 @@ module.exports = {
                     { clientID: { $in: ids } },
                     ignoreBlock ? {} : block_query
                 ]
-            }).lean().select({ "clientID": 1, "dob": 1, "cast": 1, "height": 1, "city": 1, "_id": 0, "state": 1, "country": 1, "income": 1 });
+            }).lean().select({ "clientID": 1, "dob": 1, "cast": 1, "height": 1, "city": 1, "_id": 0, "state": 1, "country": 1, "income": 1, "gender": 1 });
             let filteredPersonalData = [];
             const clientIDs = personalData.map(item => item.clientID);
 
