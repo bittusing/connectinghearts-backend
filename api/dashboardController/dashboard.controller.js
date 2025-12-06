@@ -739,6 +739,7 @@ module.exports = {
             "country": targetUserPD?.country,
             "state": targetUserPD?.state,
             "city": targetUserPD?.city,
+            "gender": targetUserPD?.gender,
             "heartsId": userData?.heartsId,
             "profilePic": userData?.profilePic,
             "clientID": userData?._id,
