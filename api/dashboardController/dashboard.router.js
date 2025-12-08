@@ -15,6 +15,7 @@ const {
   getProfileVisitors,
   searchProfile,
   getDetailView,
+  getDetailView1,
   getMyBlockedProfiles,
   unblockProfile,
   getMyDeclinedProfiles,
@@ -51,6 +52,7 @@ router.get("/getMyBlockedProfiles", protectedRoute, getMyBlockedProfiles);
 router.get("/getMyUnlockedProfiles", protectedRoute, getMyUnlockedProfiles);
 router.get("/verifyPayment/:orderID", protectedRoute, verifyPayment);
 router.get("/getDetailView/:target_id", protectedRoute, getDetailView);
+router.get("/getDetailView1/:target_id", protectedRoute, getDetailView1);
 router.get("/unblockProfile/:id", protectedRoute, unblockProfile);
 router.get("/unlockProfile/:target_id", protectedRoute, unlockProfile);
 router.get("/getMyDeclinedProfiles", protectedRoute, getMyDeclinedProfiles);

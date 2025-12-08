@@ -1,6 +1,9 @@
 let validationFunc = require("../../helper_functions/validateBody");
 let interestSchema = require("../../schemas/interest.schema");
 let userSchema = require("../../schemas/user.schema");
+let countrySchema = require("../../schemas/country.schema");
+let stateSchema = require("../../schemas/state.schema");
+let citySchema = require("../../schemas/city.schema");
 let memberShipListSchema = require("../../schemas/membershipDetails.schema");
 let personalDetailsSchema = require("../../schemas/personalDetails.schema");
 let lookupSchema = require("../../schemas/lookup.schema");
@@ -35,6 +38,9 @@ function addMonthsToDate(monthsToAdd, date) {
   return newDate;
 }
 function findValueFromLookup(id, name, data) {
+  if (!data || !data[name] || !Array.isArray(data[name])) {
+    return undefined;
+  }
   let lkpDisplayValue = data[name].filter((each_lkp) => {
     return id == each_lkp.value;
   });
@@ -702,6 +708,7 @@ module.exports = {
     }
 
   },
+  //old function
   getDetailView: async (req, res) => {
     try {
       let requester_id = req.userId, target_id = req.params.target_id, triggerNotification = true;
@@ -813,7 +820,6 @@ module.exports = {
             "nakshatra": targetUserPD?.nakshatra,
           },
           "lifeStyleData": {
-            "habits": lifeStyleData?.habits,
             "habits": lifeStyleData?.habits,
             "assets": lifeStyleData?.assets,
             "movies": lifeStyleData?.movies,
@@ -968,6 +974,288 @@ module.exports = {
         result.matchData = match;
         result.matchPercentage = matchPercentage.toFixed(0);
         console.log({ triggerNotification })
+        if (triggerNotification)
+          await notificationService.sendNotificationToUser(target_id, "Profile viewed!", "Someone visited your profile. Find out who's interested in you!");
+        return res.send({
+          code: "CH200",
+          status: "success",
+          data: result,
+        });
+      }
+      else {
+        throw new Error("Invalid requester ID");
+      }
+    } catch (e) {
+      console.log(e)
+      return res.status(400).send({
+        code: "CH400",
+        status: "failed",
+        err: e.message ? e.message : e,
+      });
+    }
+  },
+  //new function
+  getDetailView1: async (req, res) => {
+    try {
+      let requester_id = req.userId, target_id = req.params.target_id, triggerNotification = true;
+      let initUserData = await userSchema.findById(target_id).select({ "_id": 0, "visitors": 1 });
+      if (initUserData?.visitors?.includes(requester_id)) {
+        triggerNotification = false;
+      }
+      if (mongoUtilService.isValidMongoId(requester_id)) {
+        let userData = null;
+        if (target_id != requester_id) {
+          userData = await userSchema.findByIdAndUpdate(target_id, {
+            $addToSet: { visitors: requester_id }
+          }, { new: true });
+        }
+        else {
+          userData = await userSchema.findById(target_id);
+        }
+        if (!userData) throw new Error('Target user not found!');
+        let familyData = await familySchema.findOne({ "clientID": target_id });
+        let lifeStyleData = await lifestyleSchema.findOne({ "clientID": target_id });
+        let targetUserPD = await personalDetailsSchema.findOne({ "clientID": target_id });
+        let currentUserPD = await personalDetailsSchema.findOne({ "clientID": requester_id });
+        let currentUserLifeStyle = await lifestyleSchema.findOne({ "clientID": requester_id });
+        let requesterUserData = await userSchema.findById(requester_id);
+        let isShortlisted = requesterUserData?.shortlistedProfiles?.indexOf(target_id) > -1;
+        let lookupData = await lookupSchema.findOne().lean();
+        let countryData = await countrySchema.findOne({ "value": targetUserPD?.country }).lean();
+        let stateData = await stateSchema.findOne({ country_id: targetUserPD?.country }).lean();
+        let cityData = await citySchema.findOne({ state_id: targetUserPD?.state }).lean();
+        let result = {
+          "miscellaneous": {
+            "country": countryData?.label || targetUserPD?.country,
+            "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
+            "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
+            "gender": targetUserPD?.gender=="M" ? "Male" : "Female",
+            "heartsId": userData?.heartsId,
+            "profilePic": userData?.profilePic,
+            "clientID": userData?._id,
+            "isUnlocked": requesterUserData?.unlockedProfiles?.indexOf(target_id) > -1,
+            "isMembershipActive": new Date().getTime() < new Date(requesterUserData?.memberShipExpiryDate).getTime(),
+            isShortlisted
+          },
+          "basic": {
+            "cast": findValueFromLookup(targetUserPD?.cast, "casts", lookupData) || targetUserPD?.cast,
+            "height": findValueFromLookup(targetUserPD?.height, "height", lookupData) || targetUserPD?.height,
+            "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
+            "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
+            "country": countryData?.label || targetUserPD?.country,
+          },
+          "critical": {
+            "dob": formatDateToDDMMYYYY(targetUserPD?.dob),
+            "maritalStatus": findValueFromLookup(targetUserPD?.maritalStatus, "maritalStatus", lookupData) || targetUserPD?.maritalStatus,
+          },
+          "about": {
+            "managedBy": findValueFromLookup(targetUserPD?.managedBy, "managedBy", lookupData) || targetUserPD?.managedBy,
+            "description": userData?.description,
+            "bodyType": findValueFromLookup(targetUserPD?.bodyType, "bodyType", lookupData) || targetUserPD?.bodyType,
+            "thalassemia": findValueFromLookup(targetUserPD?.thalassemia, "thalassemia", lookupData) || targetUserPD?.thalassemia,
+            "hivPositive": targetUserPD?.hivPositive=="Y" ? "Yes" : targetUserPD?.hivPositive=="N" ? "No" : "Not filled",
+            "disability": findValueFromLookup(targetUserPD?.disability, "disability", lookupData) || targetUserPD?.disability
+          },
+          "education": {
+            "qualification": findValueFromLookup(targetUserPD?.education?.qualification, "qualification", lookupData) || targetUserPD?.education?.qualification,
+            "otherUGDegree": findValueFromLookup(targetUserPD?.education?.otherUGDegree, "otherUGDegree", lookupData) || targetUserPD?.education?.otherUGDegree,
+            "aboutEducation": targetUserPD?.education?.aboutEducation,
+            "school": findValueFromLookup(targetUserPD?.education?.school, "school", lookupData) || targetUserPD?.education?.school,
+          },
+          "career": {
+            "aboutMyCareer": targetUserPD?.aboutMyCareer,
+            "employed_in": findValueFromLookup(targetUserPD?.employed_in, "employed_in", lookupData) || targetUserPD?.employed_in,
+            "occupation": findValueFromLookup(targetUserPD?.occupation, "occupation", lookupData) || targetUserPD?.occupation,
+            "organisationName": findValueFromLookup(targetUserPD?.organisationName, "organisationName", lookupData) || targetUserPD?.organisationName,
+            "interestedInSettlingAbroad": findValueFromLookup(targetUserPD?.interestedInSettlingAbroad, "interestedInSettlingAbroad", lookupData) || targetUserPD?.interestedInSettlingAbroad,
+            "income": findValueFromLookup(targetUserPD?.income, "income", lookupData) || targetUserPD?.income
+          },
+          "family": {
+            "familyStatus": findValueFromLookup(familyData?.familyStatus, "familyStatus", lookupData) || familyData?.familyStatus,
+            "familyValues": familyData?.familyValues,
+              "familyType": findValueFromLookup(familyData?.familyType, "familyType", lookupData) || familyData?.familyType,
+            "familyIncome": findValueFromLookup(familyData?.familyIncome, "familyIncome", lookupData) || familyData?.familyIncome,
+            "fatherOccupation": findValueFromLookup(familyData?.fatherOccupation, "fatherOccupation", lookupData) || familyData?.fatherOccupation,
+            "motherOccupation": findValueFromLookup(familyData?.motherOccupation, "motherOccupation", lookupData) || familyData?.motherOccupation,
+            "brothers": findValueFromLookup(familyData?.brothers, "brothers", lookupData) || familyData?.brothers,
+            "marriedBrothers": findValueFromLookup(familyData?.marriedBrothers, "marriedBrothers", lookupData) || familyData?.marriedBrothers,
+            "sisters": findValueFromLookup(familyData?.sisters, "sisters", lookupData) || familyData?.sisters,
+            "marriedSisters": findValueFromLookup(familyData?.marriedSisters, "marriedSisters", lookupData) || familyData?.marriedSisters,
+            "gothra": findValueFromLookup(familyData?.gothra, "gothra", lookupData) || familyData?.gothra,
+            "livingWithParents": findValueFromLookup(familyData?.livingWithParents, "livingWithParents", lookupData) || familyData?.livingWithParents,
+            "familyBasedOutOf": countryData?.label || familyData?.familyBasedOutOf,
+            "aboutMyFamily": findValueFromLookup(familyData?.aboutMyFamily, "aboutMyFamily", lookupData) || familyData?.aboutMyFamily,
+          },
+          "contact": {
+            "alternateEmail": userData?.alternateEmail,
+            "altMobileNumber": userData?.altMobileNumber,
+            "landline": userData?.landline,
+            "phoneNumber": requesterUserData?.unlockedProfiles?.indexOf(target_id) > -1 ? userData?.countryCode + userData?.phoneNumber : "",
+            "email": requesterUserData?.unlockedProfiles?.indexOf(target_id) > -1 ? userData?.email : "",
+            "name": requesterUserData?.unlockedProfiles?.indexOf(target_id) > -1 ? userData?.name : "",
+          },
+          "kundali": {
+            "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.cityOfBirth)?.label || targetUserPD?.cityOfBirth,
+            "country": countryData?.label || targetUserPD?.countryOfBirth,
+            "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.stateOfBirth)?.label ||  targetUserPD?.stateOfBirth,
+            "tob": targetUserPD?.timeOfBirth,
+            "manglik": findValueFromLookup(targetUserPD?.manglik, "manglik", lookupData) || targetUserPD?.manglik,
+            "horoscope": findValueFromLookup(targetUserPD?.horoscope, "horoscopes", lookupData) || targetUserPD?.horoscope,
+            "rashi": findValueFromLookup(targetUserPD?.rashi, "rashi", lookupData) || targetUserPD?.rashi,
+            "nakshatra": findValueFromLookup(targetUserPD?.nakshatra, "nakshatra", lookupData) || targetUserPD?.nakshatra,
+          },
+          "lifeStyleData": {
+            "habits": findValueFromLookup(lifeStyleData?.habits, "habits", lookupData) || lifeStyleData?.habits,
+            "assets": findValueFromLookup(lifeStyleData?.assets, "assets", lookupData) || lifeStyleData?.assets,
+            "movies": findValueFromLookup(lifeStyleData?.movies, "movies", lookupData) || lifeStyleData?.movies,
+            "languages": lifeStyleData?.languages.map((each_language) => findValueFromLookup(each_language, "motherTongue", lookupData) || each_language).join(", "),
+            "foodICook": findValueFromLookup(lifeStyleData?.foodICook, "foodICook", lookupData) || lifeStyleData?.foodICook,
+            "hobbies": findValueFromLookup(lifeStyleData?.hobbies, "hobbies", lookupData) || lifeStyleData?.hobbies,
+            "interest": lifeStyleData?.interest.map((each_interest) => findValueFromLookup(each_interest, "interest", lookupData) || each_interest).join(", "),
+            "books": findValueFromLookup(lifeStyleData?.books, "books", lookupData) || lifeStyleData?.books,
+            "dress": lifeStyleData?.dress.map((each_dress) => findValueFromLookup(each_dress, "dress", lookupData) || each_dress).join(", "),
+            "sports": findValueFromLookup(lifeStyleData?.sports, "sports", lookupData) || lifeStyleData?.sports,
+            "cuisine": lifeStyleData?.cuisine.map((each_cuisine) => findValueFromLookup(each_cuisine, "cuisine", lookupData) || each_cuisine).join(", "),
+            "favRead": findValueFromLookup(lifeStyleData?.favRead, "favRead", lookupData) || lifeStyleData?.favRead,
+            "favTVShow": findValueFromLookup(lifeStyleData?.favTVShow, "favTVShow", lookupData) || lifeStyleData?.favTVShow,
+            "vacayDestination": findValueFromLookup(lifeStyleData?.vacayDestination, "vacayDestination", lookupData) || lifeStyleData?.vacayDestination,
+            "dietaryHabits": findValueFromLookup(lifeStyleData?.dietaryHabits, "dietaryHabits", lookupData) || lifeStyleData?.dietaryHabits,
+            "drinkingHabits": findValueFromLookup(lifeStyleData?.drinkingHabits, "drinkingHabits", lookupData) || lifeStyleData?.drinkingHabits,
+            "smokingHabits": findValueFromLookup(lifeStyleData?.smokingHabits, "smokingHabits", lookupData) || lifeStyleData?.smokingHabits,
+            "openToPets": lifeStyleData?.openToPets=="Y" ? "Yes" : lifeStyleData?.openToPets=="N" ? "No" : "Not filled",
+            "ownAHouse": lifeStyleData?.ownAHouse=="Y" ? "Yes" : lifeStyleData?.ownAHouse=="N" ? "No" : "Not filled",
+            "ownACar": lifeStyleData?.ownACar=="Y" ? "Yes" : lifeStyleData?.ownACar=="N" ? "No" : "Not filled",
+            "favMusic": lifeStyleData?.favMusic.map((each_music) => findValueFromLookup(each_music, "music", lookupData) || each_music).join(", "),
+          }
+        }
+        let match = [];
+        
+        if (currentUserPD && targetUserPD && (isWithin5YearsRange(currentUserPD.dob, targetUserPD.dob))) {
+          match.push({ label: "Age", isMatched: true, value: formatDateToDDMMYYYY(currentUserPD?.dob) })
+        }
+        else {
+          match.push({ label: "Age", isMatched: false, value: formatDateToDDMMYYYY(currentUserPD?.dob) })
+        }
+        if (currentUserPD?.maritalStatus == "nvm") {
+          if (targetUserPD.maritalStatus == "nvm")
+            match.push({ label: "Marital status", isMatched: true, value: "Never married" });
+          else
+            match.push({ label: "Marital status", isMatched: false, value: "Never married" });
+        }
+        else {
+          if (targetUserPD?.maritalStatus != "nvm")
+            match.push({ label: "Marital status", isMatched: true, value: findValueFromLookup(currentUserPD.maritalStatus, "maritalStatus", lookupData) || "Not filled" });
+          else
+            match.push({ label: "Marital status", isMatched: false, value: findValueFromLookup(currentUserPD.maritalStatus, "maritalStatus", lookupData) || "Not filled" });
+        }
+        if (currentUserPD && targetUserPD && currentUserPD.disability && targetUserPD.disability) {
+          if (currentUserPD.disability == targetUserPD.disability) {
+            match.push({ label: "Disability", isMatched: true, value: findValueFromLookup(currentUserPD.disability, "disability", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Disability", isMatched: false, value: findValueFromLookup(currentUserPD.disability, "disability", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserPD && targetUserPD && currentUserPD.religion && targetUserPD.religion) {
+          if (currentUserPD.religion === targetUserPD.religion) {
+            match.push({ label: "Religion", isMatched: true, value: findValueFromLookup(currentUserPD.religion, "religion", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Religion", isMatched: false, value: findValueFromLookup(currentUserPD.religion, "religion", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserPD && targetUserPD && currentUserPD.motherTongue && targetUserPD.motherTongue) {
+          if (currentUserPD.motherTongue === targetUserPD.motherTongue) {
+            match.push({ label: "Mother tongue", isMatched: true, value: findValueFromLookup(currentUserPD.motherTongue, "motherTongue", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Mother tongue", isMatched: false, value: findValueFromLookup(currentUserPD.motherTongue, "motherTongue", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserLifeStyle && lifeStyleData && currentUserLifeStyle.smokingHabits && lifeStyleData.smokingHabits) {
+          if (currentUserLifeStyle?.smokingHabits == lifeStyleData?.smokingHabits) {
+            match.push({ label: "Smoking", isMatched: true, value: findValueFromLookup(currentUserLifeStyle?.smokingHabits, "smokingHabits", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Smoking", isMatched: false, value: findValueFromLookup(currentUserLifeStyle?.smokingHabits, "smokingHabits", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserLifeStyle && lifeStyleData && currentUserLifeStyle.drinkingHabits && lifeStyleData.drinkingHabits) {
+          if (currentUserLifeStyle?.drinkingHabits == lifeStyleData?.drinkingHabits) {
+            match.push({ label: "Drinking", isMatched: true, value: findValueFromLookup(currentUserLifeStyle?.drinkingHabits, "drinkingHabits", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Drinking", isMatched: false, value: findValueFromLookup(currentUserLifeStyle?.drinkingHabits, "drinkingHabits", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserPD?.manglik == "N/A") {
+          if (targetUserPD?.manglik == "N/A") {
+            match.push({ label: "Manglik", isMatched: true, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Manglik", isMatched: false, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+        }
+        else if (currentUserPD?.manglik == "non") {
+          if (targetUserPD?.manglik == "non") {
+            match.push({ label: "Manglik", isMatched: true, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Manglik", isMatched: false, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+        }
+        else {
+          if (targetUserPD?.manglik == "ang" || targetUserPD?.manglik == "man") {
+            match.push({ label: "Manglik", isMatched: true, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Manglik", isMatched: false, value: findValueFromLookup(currentUserPD?.manglik, "manglik", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserPD.gender == "M") {
+          let upperHeight = currentUserPD?.height + 2;
+          let lowerHeight = 48;
+          if (targetUserPD?.height >= lowerHeight && targetUserPD?.height <= upperHeight) {
+            match.push({ label: "Height", isMatched: true, value: findValueFromLookup(currentUserPD?.height, "height", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Height", isMatched: false, value: findValueFromLookup(currentUserPD?.height, "height", lookupData) || "Not filled" })
+          }
+        }
+        else {
+          let lowerHeight = currentUserPD?.height - 2;
+          let upperHeight = 84;
+          if (targetUserPD?.height >= lowerHeight && targetUserPD?.height <= upperHeight) {
+            match.push({ label: "Height", isMatched: true, value: findValueFromLookup(currentUserPD?.height, "height", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Height", isMatched: false, value: findValueFromLookup(currentUserPD?.height, "height", lookupData) || "Not filled" })
+          }
+        }
+        if (currentUserPD.gender == "M") {
+          let upperIncome = currentUserPD?.income + 2;
+          let lowerIncome = 0;
+          if (targetUserPD?.income >= lowerIncome && targetUserPD?.income <= upperIncome) {
+            match.push({ label: "Income", isMatched: true, value: findValueFromLookup(currentUserPD?.income, "income", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Income", isMatched: false, value: findValueFromLookup(currentUserPD?.income, "income", lookupData) || "Not filled" })
+          }
+        }
+        else {
+          let lowerIncome = currentUserPD?.income - 2;
+          let upperIncome = 14;
+          if (targetUserPD?.income >= lowerIncome && targetUserPD?.income <= upperIncome) {
+            match.push({ label: "Income", isMatched: true, value: findValueFromLookup(currentUserPD?.income, "income", lookupData) || "Not filled" })
+          }
+          else {
+            match.push({ label: "Income", isMatched: false, value: findValueFromLookup(currentUserPD?.income, "income", lookupData) || "Not filled" })
+          }
+        }
+        let matchedKeys = match.filter((each_match) => each_match.isMatched);
+        let matchPercentage = (matchedKeys.length / match.length) * 100;
+        result.matchData = match;
+        result.matchPercentage = matchPercentage.toFixed(0);
         if (triggerNotification)
           await notificationService.sendNotificationToUser(target_id, "Profile viewed!", "Someone visited your profile. Find out who's interested in you!");
         return res.send({
