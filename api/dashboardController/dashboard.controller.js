@@ -668,6 +668,12 @@ module.exports = {
       if (body?.country?.length) {
         query_obj["country"] = { $in: body.country };
       }
+      if (body?.state?.length) {
+        query_obj["state"] = { $in: body.state };
+      }
+      if (body?.city?.length) {
+        query_obj["city"] = { $in: body.city };
+      }
       if (body?.motherTongue?.length) {
         query_obj["motherTongue"] = { $in: body.motherTongue };
       }
