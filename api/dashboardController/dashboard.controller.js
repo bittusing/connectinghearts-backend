@@ -1121,7 +1121,7 @@ module.exports = {
             "books":  lifeStyleData?.books.map((each_book) => findValueFromLookup(each_book, "books", lookupData) || each_book).join(", "),
             "dress": lifeStyleData?.dress.map((each_dress) => findValueFromLookup(each_dress, "dressStyle", lookupData) || each_dress).join(", "),
             "sports": lifeStyleData?.sports.map((each_sport) => findValueFromLookup(each_sport, "sports", lookupData) || each_sport).join(", "),
-            "cuisine": lifeStyleData?.cuisine.map((each_cuisine) => findValueFromLookup(each_cuisine, "cuisine", lookupData) || each_cuisine).join(", "),
+            "cuisine": lifeStyleData?.cuisine.map((each_cuisine) => findValueFromLookup(each_cuisine, "cuisines", lookupData) || each_cuisine).join(", "),
             "favRead": findValueFromLookup(lifeStyleData?.favRead, "favRead", lookupData) || lifeStyleData?.favRead,
             "favTVShow": findValueFromLookup(lifeStyleData?.favTVShow, "favTVShow", lookupData) || lifeStyleData?.favTVShow,
             "vacayDestination": findValueFromLookup(lifeStyleData?.vacayDestination, "vacayDestination", lookupData) || lifeStyleData?.vacayDestination,
