@@ -1086,7 +1086,7 @@ module.exports = {
             "familyStatus": findValueFromLookup(familyData?.familyStatus, "familyStatus", lookupData) || familyData?.familyStatus,
             "familyValues": findValueFromLookup(familyData?.familyValues, "familyValues", lookupData) || familyData?.familyValues,
             "familyType": findValueFromLookup(familyData?.familyType, "familyType", lookupData) || familyData?.familyType,
-            "familyIncome": findValueFromLookup(familyData?.familyIncome, "familyIncome", lookupData) || familyData?.familyIncome,
+            "familyIncome": findValueFromLookup(familyData?.familyIncome, "income", lookupData) || familyData?.familyIncome,
             "fatherOccupation": findValueFromLookup(familyData?.fatherOccupation, "fathersOccupation", lookupData) || familyData?.fatherOccupation,
             "motherOccupation": findValueFromLookup(familyData?.motherOccupation, "mothersOccupation", lookupData) || familyData?.motherOccupation,
             "brothers": findValueFromLookup(familyData?.brothers, "brothers", lookupData) || familyData?.brothers,
