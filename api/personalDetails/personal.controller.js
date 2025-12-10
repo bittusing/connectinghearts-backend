@@ -93,6 +93,7 @@ module.exports = {
           "state": body?.state,
           "city": body?.city,
           "religion": body?.religion,
+          "residentialStatus": body?.residentialStatus,
           "income": body?.income,
           "motherTongue": body?.motherTongue
         }
