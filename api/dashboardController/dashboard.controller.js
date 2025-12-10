@@ -1034,6 +1034,7 @@ module.exports = {
           "miscellaneous": {
             "residentialStatus": findValueFromLookup(targetUserPD?.residentialStatus, "residentialStatus", lookupData) || targetUserPD?.residentialStatus,
             "motherTongue": findValueFromLookup(targetUserPD?.motherTongue, "motherTongue", lookupData) || targetUserPD?.motherTongue,
+            "religion": findValueFromLookup(targetUserPD?.religion, "religion", lookupData) || targetUserPD?.religion,
             "country": countryData?.label || targetUserPD?.country,
             "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
             "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
@@ -1051,6 +1052,7 @@ module.exports = {
             "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
             "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
             "country": countryData?.label || targetUserPD?.country,
+            "religion": findValueFromLookup(targetUserPD?.religion, "religion", lookupData) || targetUserPD?.religion,
             "residentialStatus": findValueFromLookup(targetUserPD?.residentialStatus, "residentialStatus", lookupData) || targetUserPD?.residentialStatus,
             "motherTongue": findValueFromLookup(targetUserPD?.motherTongue, "motherTongue", lookupData) || targetUserPD?.motherTongue,
           },
