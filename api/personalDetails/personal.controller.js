@@ -236,6 +236,7 @@ module.exports = {
         "miscellaneous":{
           "country":personalDetailsData?.country,
           "state":personalDetailsData?.state,
+          "residentialStatus": personalDetailsData?.residentialStatus,
           "city":personalDetailsData?.city,
           "heartsId":userData?.heartsId,
           "profilePic": userData?.profilePic
