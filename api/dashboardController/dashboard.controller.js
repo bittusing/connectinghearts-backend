@@ -1032,6 +1032,8 @@ module.exports = {
         let cityData = await citySchema.findOne({ state_id: targetUserPD?.state }).lean();
         let result = {
           "miscellaneous": {
+            "residentialStatus": findValueFromLookup(targetUserPD?.residentialStatus, "residentialStatus", lookupData) || targetUserPD?.residentialStatus,
+            "motherTongue": findValueFromLookup(targetUserPD?.motherTongue, "motherTongue", lookupData) || targetUserPD?.motherTongue,
             "country": countryData?.label || targetUserPD?.country,
             "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
             "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
@@ -1049,6 +1051,8 @@ module.exports = {
             "state": stateData?.states.find((each_state) => each_state.value == targetUserPD?.state)?.label || targetUserPD?.state,
             "city": cityData?.cities.find((each_city) => each_city.value == targetUserPD?.city)?.label || targetUserPD?.city,
             "country": countryData?.label || targetUserPD?.country,
+            "residentialStatus": findValueFromLookup(targetUserPD?.residentialStatus, "residentialStatus", lookupData) || targetUserPD?.residentialStatus,
+            "motherTongue": findValueFromLookup(targetUserPD?.motherTongue, "motherTongue", lookupData) || targetUserPD?.motherTongue,
           },
           "critical": {
             "dob": formatDateToDDMMYYYY(targetUserPD?.dob),
