@@ -247,6 +247,7 @@ module.exports = {
           "state": personalDetailsData?.state,
           "city": personalDetailsData?.city,
           "religion": personalDetailsData?.religion,
+          "residentialStatus": personalDetailsData?.residentialStatus,
           "name":userData?.name,
           "gender":userData?.gender,
           "income":personalDetailsData?.income,
