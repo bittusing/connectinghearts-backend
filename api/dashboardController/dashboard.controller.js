@@ -1140,6 +1140,7 @@ module.exports = {
             "favMusic": lifeStyleData?.favMusic.map((each_music) => findValueFromLookup(each_music, "music", lookupData) || each_music).join(", "),
           }
         }
+        console.log("kundali", result.kundali)
         let match = [];
         
         if (currentUserPD && targetUserPD && (isWithin5YearsRange(currentUserPD.dob, targetUserPD.dob))) {

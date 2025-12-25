@@ -82,7 +82,7 @@ module.exports = {
       });
     }
     try {
-      console.log(76,body)
+    //  console.log(76,body)
       if(body?.name?.trim()==""){
         logger("User entered blank name");
         return res.status(400).send({
@@ -107,7 +107,16 @@ module.exports = {
       body.countryCode=userSchemaSavedUser?.countryCode;
       body.heartsId=userSchemaSavedUser?.heartsId;
       logger(body)
-      await userSchema.findOneAndUpdate({ phoneNumber: body.phoneNumber }, body, { new: true,upsert:true });
+      
+      // Check if user with this _id already exists
+      const existingUserById = await userSchema.findById(req.userId);
+      if (existingUserById) {
+        // User already exists, update by _id
+        await userSchema.findByIdAndUpdate(req.userId, body, { new: true });
+      } else {
+        // User doesn't exist, upsert by phoneNumber
+        await userSchema.findOneAndUpdate({ phoneNumber: body.phoneNumber }, body, { new: true, upsert: true });
+      }
       //console.log(saved_user)
       return res.send({
         code: "CH200",
@@ -363,7 +372,7 @@ module.exports = {
           code: "CH200",
           status: "success",
           message: "OTP generated successfully!",
-          otp,
+          //otp,
           // isOTPPopup: true
         })
       }
