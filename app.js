@@ -1,4 +1,14 @@
 require("dotenv").config();
+
+// ⚡ IMPORTANT: Disable console.log in production to save CloudWatch costs
+if (process.env.IS_PROD === "TRUE") {
+  console.log = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+  console.warn = () => {};
+  // Keep console.error for critical issues only
+}
+
 const express = require("express");
 const cors = require('cors');
 const app = express();
@@ -60,17 +70,11 @@ app.use(cors({
     methods: ['GET', 'POST', 'DELETE', 'UPDATE', 'PUT', 'PATCH','OPTIONS'],
 }));
 app.use((req, res, next) => {
-    console.log(`Incoming Request - ${req.method} ${req.url}`);
-    console.log('Request Body:', req.body);
-    // const startTime = new Date();
-    // const originalSend = res.send;
-    // res.send = function (body) {
-    //     // console.log('Outgoing Response -', res.statusCode);
-    //     const endTime = new Date();
-    //     // console.log('Response Body:', body);
-    //     // console.log('Request Processing Time:', endTime - startTime, 'ms');
-    //     originalSend.call(this, body);
-    // };
+    // Only log in development to save CloudWatch costs
+    if (process.env.IS_PROD !== "TRUE") {
+        console.log(`Incoming Request - ${req.method} ${req.url}`);
+        console.log('Request Body:', req.body);
+    }
     next();
 });
 const main_Router = require("./router");

@@ -54,3 +54,7 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Documentation files (optional - remove if you want to commit them)
+*.md
+!README.md
+!PROJECT_DOCUMENTATION.md
