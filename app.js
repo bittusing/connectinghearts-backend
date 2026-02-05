@@ -57,7 +57,7 @@ const options = {
         },
         servers: process.env.IS_PROD === "TRUE" ? [
             {
-                url: "https://backend.prod.connectingheart.co",
+                url: "https://backendapp.connectingheart.co.in",
                 description: "HTTPS Prod environment for API"
             },
             {
@@ -70,7 +70,7 @@ const options = {
                 description: "Local environment for API"
             },
             {
-                url: "https://backend.prod.connectingheart.co",
+                url: "https://backendapp.connectingheart.co.in",
                 description: "HTTPS Prod environment for API"
             }
         ],
