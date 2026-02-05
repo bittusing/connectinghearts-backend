@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 // ⚡ IMPORTANT: Disable console.log in production to save CloudWatch costs
 if (process.env.IS_PROD === "TRUE") {
   console.log = () => {};
@@ -11,7 +10,10 @@ if (process.env.IS_PROD === "TRUE") {
 
 const express = require("express");
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 const app = express();
+const server = http.createServer(app);
 const mongooseObject = require('./config/db');
 const AWS = require('aws-sdk');
 const admin = require('firebase-admin');
@@ -19,6 +21,18 @@ const admin = require('firebase-admin');
 const swaggerUi = require("swagger-ui-express");
 const swaggerJSDoc = require("swagger-jsdoc");
 var bodyParser = require('body-parser');
+
+// Socket.IO setup with CORS
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
+
+// Initialize socket handlers
+const socketHandler = require('./socket/socketHandler');
+socketHandler(io);
 
 AWS.config.update({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -35,7 +49,7 @@ const options = {
         },
         servers: process.env.IS_PROD === "TRUE" ? [
             {
-                url: "https://backend.prod.connectingheart.co",
+                url: "http://localhost:3856",
                 description: "HTTPS Prod environment for API"
             },
             {
@@ -101,6 +115,6 @@ app.get('/abc', function (req, res) {
 
 // 
 
-app.listen(process.env.APP_PORT, () => {
+server.listen(process.env.APP_PORT, () => {
     console.log("server working port : " + process.env.APP_PORT)
 });

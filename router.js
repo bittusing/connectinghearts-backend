@@ -8,7 +8,8 @@ const preferenceRouter = require("./api/partnerPreference/preference.router");
 const commonRouter = require("./api/commonApis/common.router");
 const logicalRouter = require("./api/logicController/logic.router");
 const dashboardRouter = require("./api/dashboardController/dashboard.router");
-const adminChRouter = require("./api/adminController/admin.router")
+const adminChRouter = require("./api/adminController/admin.router");
+const chatRouter = require("./api/chatController/chat.router");
 // const helpers = require("./helper_functions/s3uploader");
 // const {protectedRoute} = require("./middlewares/auth")
 
@@ -22,5 +23,6 @@ router.use("/api/lookup", commonRouter);
 router.use("/api/interest", logicalRouter);
 router.use("/api/dashboard", dashboardRouter);
 router.use("/api/chAdmin", adminChRouter);
+router.use("/api/chat", chatRouter);
 // router.use("/api/file/:fileName",helpers.s3Download);
 module.exports=router;
