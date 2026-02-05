@@ -49,7 +49,7 @@ const options = {
         },
         servers: process.env.IS_PROD === "TRUE" ? [
             {
-                url: "http://localhost:3856",
+                url: "https://backend.prod.connectingheart.co",
                 description: "HTTPS Prod environment for API"
             },
             {
