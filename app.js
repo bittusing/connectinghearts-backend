@@ -22,12 +22,20 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerJSDoc = require("swagger-jsdoc");
 var bodyParser = require('body-parser');
 
-// Socket.IO setup with CORS
+// Socket.IO setup with CORS and production settings
 const io = new Server(server, {
   cors: {
     origin: '*',
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  // Production optimizations
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e6,
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
 // Initialize socket handlers

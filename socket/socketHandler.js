@@ -31,7 +31,11 @@ module.exports = (io) => {
 
   io.on("connection", (socket) => {
     const userId = socket.userId;
-    console.log(`User connected: ${userId}, Socket: ${socket.id}`);
+    
+    // Don't log in production (CloudWatch costs)
+    if (process.env.IS_PROD !== "TRUE") {
+      console.log(`User connected: ${userId}, Socket: ${socket.id}`);
+    }
 
     // Store active user
     activeUsers.set(userId, socket.id);
@@ -164,8 +168,10 @@ module.exports = (io) => {
     });
 
     // Handle disconnect
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${userId}, Socket: ${socket.id}`);
+    socket.on("disconnect", (reason) => {
+      if (process.env.IS_PROD !== "TRUE") {
+        console.log(`User disconnected: ${userId}, Socket: ${socket.id}, Reason: ${reason}`);
+      }
       
       // Remove from active users
       activeUsers.delete(userId);
