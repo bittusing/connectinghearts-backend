@@ -1,33 +1,38 @@
-// const twilio = require('twilio');
-// const accountSid = process.env.TWILIO_ACCOUNT_SID;
-// const authToken = process.env.TWILIO_AUTH_TOKEN;
-// const client = twilio(accountSid, authToken);
 const axios = require("axios");
 
-const triggerSMS =async (phoneNumber,body) =>{
+const triggerSMS = async (phoneNumber, body) => {
     try {
-        // const message = await client.messages.create({
-        //   body,
-        //   from: process.env.TWILIO_PHONE_NUMBER,
-        //   to: "whatsapp:"+phoneNumber
-        // });
-        let url=`${process.env.SMS_API_URL}?api_id=${process.env.SMS_API_ID}&api_password=${process.env.SMS_API_PASSWORD}
-        &sms_type=${process.env.SMS_TYPE}&sms_encoding=text&sender=${process.env.SMS_SENDER}
-        &number=${phoneNumber}&message=${body}&template_id=${process.env.SMS_TEMPLATE_ID}`
-        console.log("SMS URL is",url)
+        // Remove country code prefix if present (e.g., +91)
+        let cleanPhoneNumber = phoneNumber.replace(/^\+/, '');
+        
+        // Extract country code and mobile number
+        let countryCode = '91'; // Default to India
+        let mobileNumber = cleanPhoneNumber;
+        
+        if (cleanPhoneNumber.startsWith('91') && cleanPhoneNumber.length > 10) {
+            countryCode = '91';
+            mobileNumber = cleanPhoneNumber.substring(2);
+        }
+        
+        // Build the SMS API URL with DigiCoders parameters
+        let url = `${process.env.SMS_API_URL}?authkey=${process.env.SMS_AUTH_KEY}&mobiles=${countryCode}${mobileNumber}&message=${encodeURIComponent(body)}&sender=${process.env.SMS_SENDER}&route=${process.env.SMS_ROUTE}&country=${countryCode}&DLT_TE_ID=${process.env.SMS_DLT_TEMPLATE_ID}`;
+        
+        console.log("SMS URL is", url);
+        
         const smsResp = await axios.get(url);
-        // console.log(smsResp.data)
-        if(smsResp?.data?.code==200){
-          return {smsResp,status:'success'};
+        console.log("SMS Response:", smsResp.data);
+        
+        // Check for successful response
+        if (smsResp?.data) {
+            return { smsResp, status: 'success' };
+        } else {
+            console.log("SMS Error:", smsResp);
+            throw new Error({ error: smsResp, status: 'error' });
         }
-        else{
-          console.log(smsResp)
-          throw new Error({error:smsResp,status:'error'})
-        }
-      } catch (error) {
-        console.log(error)
-        throw new Error({error,status:'error'})
-        // return {message,status:'success'};
-      }
+    } catch (error) {
+        console.log("SMS Trigger Error:", error);
+        throw new Error({ error, status: 'error' });
+    }
 }
-module.exports={triggerSMS}
+
+module.exports = { triggerSMS };

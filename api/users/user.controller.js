@@ -361,7 +361,7 @@ module.exports = {
           isOTPPopup: true
         })
       }
-      let text = `Your mobile verification OTP for Connecting Hearts is ${otp}. Please do not share it with anyone. Powered by SHUPRA`;
+      let text = `Your OTP Code is ${otp}. Do not share it with anyone. From ConnectingHeart . #TeamDigiCoders`;
       // if (process.env.IS_PROD == "TRUE") {
         let smsStatus = await smsHelper.triggerSMS(
           extension + phoneNumber,
@@ -547,7 +547,7 @@ module.exports = {
       let updateUser = await otpSchema.findOneAndUpdate({ phoneNumber }, {
         otp
       },{upsert:true});
-      let text = `Your mobile verification OTP for Connecting Hearts is ${otp}. Please do not share it with anyone. Powered by SHUPRA`;
+      let text = `Your OTP Code is ${otp}. Do not share it with anyone. From ConnectingHeart . #TeamDigiCoders`;
         let smsStatus = await smsHelper.triggerSMS(
           existingUser?.countryCode + phoneNumber,
           text
