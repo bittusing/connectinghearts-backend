@@ -547,6 +547,18 @@ module.exports = {
       let updateUser = await otpSchema.findOneAndUpdate({ phoneNumber }, {
         otp
       },{upsert:true});
+      
+      // If country code is not +91, return OTP in response
+      if(existingUser?.countryCode != "+91"){
+        return res.send({
+          code: "CH200",
+          status: "success",
+          message: "OTP generated successfully!",
+          otp,
+          isOTPPopup: true
+        });
+      }
+      
       let text = `Your OTP Code is ${otp}. Do not share it with anyone. From ConnectingHeart . #TeamDigiCoders`;
         let smsStatus = await smsHelper.triggerSMS(
           existingUser?.countryCode + phoneNumber,
