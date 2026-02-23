@@ -10,6 +10,7 @@ const logicalRouter = require("./api/logicController/logic.router");
 const dashboardRouter = require("./api/dashboardController/dashboard.router");
 const adminChRouter = require("./api/adminController/admin.router");
 const chatRouter = require("./api/chatController/chat.router");
+const kycRouter = require("./api/kycController/kyc.router");
 // const helpers = require("./helper_functions/s3uploader");
 // const {protectedRoute} = require("./middlewares/auth")
 
@@ -24,5 +25,6 @@ router.use("/api/interest", logicalRouter);
 router.use("/api/dashboard", dashboardRouter);
 router.use("/api/chAdmin", adminChRouter);
 router.use("/api/chat", chatRouter);
+router.use("/api/kyc", kycRouter);
 // router.use("/api/file/:fileName",helpers.s3Download);
 module.exports=router;

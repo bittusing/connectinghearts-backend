@@ -48,6 +48,15 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  kycStatus: {
+    type: String,
+    default: 'pending',
+    enum: ['pending', 'verified', 'failed']
+  },
+  kycData: {
+    type: Object,
+    default: {}
+  },
   // isDeleted: Boolean,
   deletionComment: String,
   reasonForDeletion: Number,
